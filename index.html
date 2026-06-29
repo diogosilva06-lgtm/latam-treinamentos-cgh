@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="LATAM Airlines CGH — Sistema de Gestão de Treinamentos Obrigatórios">
+<title>LATAM CGH — Gestão de Treinamentos</title>
+
+<!-- Fontes e Ícones -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- CSS -->
+<link rel="stylesheet" href="css/main.css">
+
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<!-- Dados (gerados pelo Python a partir do Excel) -->
+<script src="js/data.js"></script>
+
+<style>
+/* Sobrescrita rápida: usa Inter no projeto inteiro */
+body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; }
+</style>
+</head>
+<body>
+
+<!-- ╔══════════════════════════════════════════════════════════╗ -->
+<!-- ║  TOPBAR                                                    ║ -->
+<!-- ╚══════════════════════════════════════════════════════════╝ -->
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">✈</div>
+    <div class="topbar-title">
+      <h1>LATAM Airlines — CGH · Gestão de Treinamentos</h1>
+      <p>Base Congonhas · Coord: Higor Oscar · Regional: Flávia Maciel</p>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-badge">🟢 Sistema Ativo</div>
+    <div class="topbar-clock">
+      <span>Atualizado em</span>
+      <strong id="topbar-clock-val">—</strong>
+    </div>
+  </div>
+</header>
+
+<!-- ╔══════════════════════════════════════════════════════════╗ -->
+<!-- ║  SIDEBAR                                                   ║ -->
+<!-- ╚══════════════════════════════════════════════════════════╝ -->
+<nav class="sidebar">
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">Dashboard</div>
+    <button class="nav-item" data-page="exec" onclick="goPage('exec')">
+      <span class="nav-icon">📊</span> Visão Executiva
+    </button>
+  </div>
+
+  <div class="nav-divider"></div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">Áreas</div>
+    <button class="nav-item" data-page="ato" onclick="goPage('ato')">
+      <span class="nav-icon">🛫</span> ATO (Aeroporto)
+    </button>
+    <button class="nav-item" data-page="grh" onclick="goPage('grh')">
+      <span class="nav-icon">🛬</span> GRH (Rampa)
+    </button>
+  </div>
+
+  <div class="nav-divider"></div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">Gestão</div>
+    <button class="nav-item" data-page="pendentes" onclick="goPage('pendentes')">
+      <span class="nav-icon">⚠️</span> Pendentes
+      <span class="nav-badge" data-count="pend">—</span>
+    </button>
+    <button class="nav-item" data-page="gestores" onclick="goPage('gestores')">
+      <span class="nav-icon">👥</span> Ranking Gestores
+    </button>
+    <button class="nav-item" data-page="cargos" onclick="goPage('cargos')">
+      <span class="nav-icon">🏷️</span> Ranking Cargos
+    </button>
+    <button class="nav-item" data-page="cursos" onclick="goPage('cursos')">
+      <span class="nav-icon">📚</span> Cursos
+    </button>
+    <button class="nav-item" data-page="criticos" onclick="goPage('criticos')">
+      <span class="nav-icon">🚨</span> Críticos
+    </button>
+  </div>
+
+  <div class="nav-divider"></div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">Ferramentas</div>
+    <button class="nav-item" data-page="automacao" onclick="goPage('automacao')">
+      <span class="nav-icon">⚙️</span> Automação
+    </button>
+    <button class="nav-item" data-page="ia" onclick="goPage('ia')">
+      <span class="nav-icon">🤖</span> IA Assistente
+    </button>
+    <button class="nav-item" data-page="busca" onclick="goPage('busca')">
+      <span class="nav-icon">🔍</span> Buscar
+    </button>
+  </div>
+
+</nav>
+
+<!-- ╔══════════════════════════════════════════════════════════╗ -->
+<!-- ║  MAIN CONTENT                                              ║ -->
+<!-- ╚══════════════════════════════════════════════════════════╝ -->
+<main class="main">
+
+  <!-- ══════════════════════════════════════════════════════════
+       PÁGINA 1: VISÃO EXECUTIVA
+  ══════════════════════════════════════════════════════════ -->
+  <div id="page-exec" class="page">
+
+    <div class="page-header">
+      <div>
+        <h2>📊 Visão Executiva</h2>
+        <p>Resumo geral dos treinamentos obrigatórios — Base CGH</p>
+      </div>
+      <div class="export-bar">
+        <button class="btn btn-secondary" onclick="printPage()">🖨️ Imprimir</button>
+      </div>
+    </div>
+
+    <!-- KPIs Linha 1 -->
+    <div class="kpi-grid">
+      <div class="kpi dark" id="kpi-colabs">
+        <div class="kpi-label">Colaboradores</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">—</div>
+      </div>
+      <div class="kpi green" id="kpi-ok">
+        <div class="kpi-label">Cursos em Dia</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">—</div>
+      </div>
+      <div class="kpi red" id="kpi-pend">
+        <div class="kpi-label">Cursos Pendentes</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">—</div>
+      </div>
+      <div class="kpi green" id="kpi-conf">
+        <div class="kpi-label">Conformidade Global</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">—</div>
+      </div>
+    </div>
+
+    <!-- KPIs Alertas -->
+    <div class="kpi-grid">
+      <div class="kpi red" id="kpi-vencidos">
+        <div class="kpi-label">🔴 Vencidos</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">—</div>
+      </div>
+      <div class="kpi red" id="kpi-venc-7">
+        <div class="kpi-label">🔴 Vence em 7 dias</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">—</div>
+      </div>
+      <div class="kpi orange" id="kpi-venc-15">
+        <div class="kpi-label">🟠 Vence em 15 dias</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">—</div>
+      </div>
+      <div class="kpi yellow" id="kpi-venc-30">
+        <div class="kpi-label">🟡 Vence em 30 dias</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">—</div>
+      </div>
+      <div class="kpi blue" id="kpi-venc-60">
+        <div class="kpi-label">🔵 Vence em 60 dias</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">—</div>
+      </div>
+    </div>
+
+    <!-- Cards ATO / GRH -->
+    <div class="grid-2" style="margin-bottom:14px">
+      <div class="kpi blue" id="area-ato">
+        <div class="kpi-label">🛫 Área ATO — Conformidade</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">—</div>
+      </div>
+      <div class="kpi blue" id="area-grh">
+        <div class="kpi-label">🛬 Área GRH — Conformidade</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">—</div>
+      </div>
+    </div>
+
+    <!-- Donut + Top Cursos -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📈 Conformidade Global — CGH</div>
+        <div class="donut-wrap">
+          <canvas id="chart-donut" width="150" height="150"></canvas>
+          <div class="donut-center">
+            <div class="donut-pct" id="donut-pct-txt">—%</div>
+            <div class="donut-lbl">Conformidade</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px;justify-content:center;font-size:11px;margin-top:4px">
+          <span style="color:#217346">● Em Dia</span>
+          <span style="color:#C00000">● Pendentes</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Top 10 Cursos com mais Pendências</div>
+        <div id="top-cursos-exec"></div>
+      </div>
+    </div>
+
+    <!-- Pendências por Cargo + Conformidade Gestores -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">⚠️ Pendências por Cargo</div>
+        <div id="pend-cargo-exec"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">👥 Conformidade por Gestor — Top 15</div>
+        <div id="conf-gestores-exec"></div>
+      </div>
+    </div>
+
+  </div><!-- /page-exec -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PÁGINA 2: ATO
+  ══════════════════════════════════════════════════════════ -->
+  <div id="page-ato" class="page">
+
+    <div class="page-header">
+      <div>
+        <h2>🛫 Área ATO — Atendimento ao Passageiro</h2>
+        <p>Treinamentos obrigatórios da área de operação de aeroporto</p>
+      </div>
+      <button class="btn btn-secondary" onclick="exportCSV(
+        D().colab_pend.filter(c=>c.area==='ATO').map(c=>({BP:c.bp,Nome:c.nome,Cargo:c.cargo,Gestor:c.gestor,Pendentes:c.qtd_pend,Cursos:c.pendentes.map(p=>p.curso).join(' | ')})),
+        'LATAM_ATO_Pendentes')">⬇️ Exportar</button>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi green" id="kpi-ato-conf"><div class="kpi-label">Conformidade</div><div class="kpi-val">—</div><div class="kpi-sub">—</div></div>
+      <div class="kpi red"   id="kpi-ato-pend"><div class="kpi-label">Pendências</div><div class="kpi-val">—</div><div class="kpi-sub">—</div></div>
+      <div class="kpi dark"  id="kpi-ato-colabs"><div class="kpi-label">Colaboradores</div><div class="kpi-val">—</div><div class="kpi-sub">—</div></div>
+      <div class="kpi orange" id="kpi-ato-cpend"><div class="kpi-label">Colabs c/ Pendência</div><div class="kpi-val">—</div><div class="kpi-sub">—</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📋 Top Cursos Pendentes — ATO</div>
+        <div id="top-cursos-ato"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">👥 Pendências por Gestor — ATO</div>
+        <div class="chart-wrap" style="height:320px">
+          <canvas id="chart-ato-gest"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⚠️ Colaboradores com Pendências — ATO</div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead>
+            <tr><th>#</th><th>BP</th><th>Nome</th><th>Cargo</th><th>Gestor</th><th class="center">Qtd</th><th>Cursos Pendentes</th></tr>
+          </thead>
+          <tbody id="tbody-ato-pend"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /page-ato -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PÁGINA 3: GRH
+  ══════════════════════════════════════════════════════════ -->
+  <div id="page-grh" class="page">
+
+    <div class="page-header">
+      <div>
+        <h2>🛬 Área GRH — Operações de Rampa</h2>
+        <p>Treinamentos obrigatórios da área de ground handling e rampa</p>
+      </div>
+      <button class="btn btn-secondary" onclick="exportCSV(
+        D().colab_pend.filter(c=>c.area==='GRH').map(c=>({BP:c.bp,Nome:c.nome,Cargo:c.cargo,Gestor:c.gestor,Pendentes:c.qtd_pend,Cursos:c.pendentes.map(p=>p.curso).join(' | ')})),
+        'LATAM_GRH_Pendentes')">⬇️ Exportar</button>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi green"  id="kpi-grh-conf"><div class="kpi-label">Conformidade</div><div class="kpi-val">—</div><div class="kpi-sub">—</div></div>
+      <div class="kpi red"    id="kpi-grh-pend"><div class="kpi-label">Pendências</div><div class="kpi-val">—</div><div class="kpi-sub">—</div></div>
+      <div class="kpi dark"   id="kpi-grh-colabs"><div class="kpi-label">Colaboradores</div><div class="kpi-val">—</div><div class="kpi-sub">—</div></div>
+      <div class="kpi orange" id="kpi-grh-cpend"><div class="kpi-label">Colabs c/ Pendência</div><div class="kpi-val">—</div><div class="kpi-sub">—</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📋 Top Cursos Pendentes — GRH</div>
+        <div id="top-cursos-grh"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">👥 Pendências por Gestor — GRH</div>
+        <div class="chart-wrap" style="height:320px">
+          <canvas id="chart-grh-gest"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⚠️ Colaboradores com Pendências — GRH</div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead>
+            <tr><th>#</th><th>BP</th><th>Nome</th><th>Cargo</th><th>Gestor</th><th class="center">Qtd</th><th>Cursos Pendentes</th></tr>
+          </thead>
+          <tbody id="tbody-grh-pend"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /page-grh -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PÁGINA 4: PENDENTES
+  ══════════════════════════════════════════════════════════ -->
+  <div id="page-pendentes" class="page">
+
+    <div class="page-header">
+      <div>
+        <h2>⚠️ Colaboradores com Pendências</h2>
+        <p id="pend-count">Carregando...</p>
+      </div>
+      <div class="export-bar">
+        <button class="btn btn-yellow" onclick="exportPendentesCSV()">⬇️ Exportar CSV</button>
+        <button class="btn btn-secondary" onclick="printPage()">🖨️ Imprimir</button>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <span class="filter-label">Gestor:</span>
+      <select id="f-pend-gestor" onchange="renderPendentes()">
+        <option value="">Todos os Gestores</option>
+      </select>
+      <span class="filter-label">Cargo:</span>
+      <select id="f-pend-cargo" onchange="renderPendentes()">
+        <option value="">Todos os Cargos</option>
+      </select>
+      <span class="filter-label">Área:</span>
+      <select id="f-pend-area" onchange="renderPendentes()">
+        <option value="">Todas as Áreas</option>
+        <option value="ATO">ATO</option>
+        <option value="GRH">GRH</option>
+      </select>
+      <span class="filter-label">Buscar:</span>
+      <input type="text" id="f-pend-busca" placeholder="Nome, BP, curso..." oninput="renderPendentes()" style="width:180px">
+      <button class="btn btn-secondary" onclick="document.getElementById('f-pend-gestor').value='';document.getElementById('f-pend-cargo').value='';document.getElementById('f-pend-area').value='';document.getElementById('f-pend-busca').value='';renderPendentes()">✖ Limpar</button>
+    </div>
+
+    <div class="card">
+      <div class="tbl-wrap" style="max-height:500px">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th class="center">#</th>
+              <th>BP</th>
+              <th>Nome / E-mail</th>
+              <th>Cargo</th>
+              <th>Gestor</th>
+              <th class="center">Área</th>
+              <th class="center">Qtd</th>
+              <th>Cursos Pendentes</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-pendentes"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /page-pendentes -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PÁGINA 5: GESTORES
+  ══════════════════════════════════════════════════════════ -->
+  <div id="page-gestores" class="page">
+
+    <div class="page-header">
+      <div>
+        <h2>👥 Ranking de Gestores</h2>
+        <p>Conformidade e pendências por supervisor imediato</p>
+      </div>
+      <div class="export-bar">
+        <button class="btn btn-yellow" onclick="exportGestoresCSV()">⬇️ Exportar CSV</button>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📊 Conformidade por Gestor</div>
+        <div class="filter-bar" style="margin-bottom:8px">
+          <input type="text" id="f-gest-busca" placeholder="Buscar gestor..." oninput="renderGestores()" style="width:220px">
+        </div>
+        <div class="tbl-wrap" style="max-height:500px">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th class="center">#</th>
+                <th>Gestor</th>
+                <th class="center">Equipe</th>
+                <th class="center">Pend.</th>
+                <th style="min-width:160px">Conformidade</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-gestores"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Top 12 com mais Pendências</div>
+        <div class="chart-wrap" style="height:480px">
+          <canvas id="chart-gestores"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /page-gestores -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PÁGINA 6: CARGOS
+  ══════════════════════════════════════════════════════════ -->
+  <div id="page-cargos" class="page">
+
+    <div class="page-header">
+      <div>
+        <h2>🏷️ Ranking por Cargo</h2>
+        <p>Distribuição de pendências e conformidade por função</p>
+      </div>
+      <button class="btn btn-yellow" onclick="exportCSV(
+        Object.entries(D().cargo_stats).map(([c,v])=>({Cargo:c,Pessoas:v.pessoas,OK:v.ok,Pendentes:v.pend,Conformidade:((v.ok/(v.ok+v.pend))*100).toFixed(1)+'%'})),
+        'LATAM_Cargos')">⬇️ Exportar CSV</button>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📋 Conformidade por Cargo</div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th class="center">#</th>
+                <th>Cargo</th>
+                <th class="center">Colabs</th>
+                <th class="center">Total</th>
+                <th class="center">Pend.</th>
+                <th style="min-width:140px">Conformidade</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-cargos"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Pendências x Em Dia por Cargo</div>
+        <div class="chart-wrap" style="height:400px">
+          <canvas id="chart-cargos"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /page-cargos -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PÁGINA 7: CURSOS
+  ══════════════════════════════════════════════════════════ -->
+  <div id="page-cursos" class="page">
+
+    <div class="page-header">
+      <div>
+        <h2>📚 Todos os Cursos</h2>
+        <p>Status de conformidade de cada treinamento obrigatório</p>
+      </div>
+      <button class="btn btn-yellow" onclick="exportCursosCSV()">⬇️ Exportar CSV</button>
+    </div>
+
+    <div class="filter-bar">
+      <span class="filter-label">Buscar:</span>
+      <input type="text" id="f-curso-busca" placeholder="Nome do curso..." oninput="renderCursos()" style="width:280px">
+      <span class="filter-label">Mostrar:</span>
+      <select id="f-curso-tipo" onchange="renderCursos()">
+        <option value="">Todos</option>
+        <option value="pend">Com Pendência</option>
+        <option value="ok">100% OK</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <div class="tbl-wrap" style="max-height:520px">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th class="center">#</th>
+              <th>Curso</th>
+              <th class="center">Total</th>
+              <th class="center">✅ OK</th>
+              <th class="center">⚠️ Pendentes</th>
+              <th style="min-width:160px">Conformidade</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-cursos"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /page-cursos -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PÁGINA 8: CRÍTICOS
+  ══════════════════════════════════════════════════════════ -->
+  <div id="page-criticos" class="page">
+
+    <div class="page-header">
+      <div>
+        <h2>🚨 Situações Críticas</h2>
+        <p>Cursos mais críticos, colaboradores prioritários e ranking de gestores</p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+
+      <div class="card">
+        <div class="card-title">🏆 Ranking de Gestores — Mais Pendências</div>
+        <div id="ranking-gestores-crit"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🚨 Top 20 Colaboradores Críticos</div>
+        <div class="tbl-wrap" style="max-height:320px">
+          <table class="tbl">
+            <thead>
+              <tr><th>#</th><th>BP</th><th>Nome</th><th>Cargo</th><th>Gestor</th><th class="center">Pend.</th></tr>
+            </thead>
+            <tbody id="tbody-colabs-crit"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="card">
+      <div class="card-title">📚 Top 15 Cursos Mais Críticos</div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead>
+            <tr><th>#</th><th>Curso</th><th class="center">Total</th><th class="center">Pendentes</th><th style="min-width:160px">Conformidade</th></tr>
+          </thead>
+          <tbody id="tbody-cursos-crit"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /page-criticos -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PÁGINA 9: AUTOMAÇÃO
+  ══════════════════════════════════════════════════════════ -->
+  <div id="page-automacao" class="page">
+
+    <div class="page-header">
+      <div>
+        <h2>⚙️ Automação de E-mails</h2>
+        <p>Controle de alertas automáticos de vencimento de treinamentos</p>
+      </div>
+    </div>
+
+    <!-- Regras de automação -->
+    <div class="grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-title">📋 Regras de Notificação</div>
+        <table class="tbl">
+          <thead><tr><th>Prazo</th><th>Destinatário</th><th>Ação</th></tr></thead>
+          <tbody>
+            <tr><td>🔵 60 dias</td><td>Colaborador</td><td>Aviso antecipado</td></tr>
+            <tr><td>🟡 30 dias</td><td>Colaborador</td><td>Lembrete de renovação</td></tr>
+            <tr><td>🟠 15 dias</td><td>Colaborador</td><td>Solicitar agendamento</td></tr>
+            <tr><td>🔴 7 dias</td><td>Colaborador + Gestor</td><td>Ação imediata</td></tr>
+            <tr><td>🔴 Vencido</td><td>Colaborador + Gestor</td><td>Urgente — habilitação em risco</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Alertas Identificados Hoje</div>
+        <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);gap:8px">
+          <div class="kpi red" style="padding:10px">
+            <div class="kpi-label">🔴 Vencidos</div>
+            <div class="kpi-val" id="cnt-vencido">—</div>
+          </div>
+          <div class="kpi red" style="padding:10px">
+            <div class="kpi-label">🔴 7 dias</div>
+            <div class="kpi-val" id="cnt-7">—</div>
+          </div>
+          <div class="kpi orange" style="padding:10px">
+            <div class="kpi-label">🟠 15 dias</div>
+            <div class="kpi-val" id="cnt-15">—</div>
+          </div>
+          <div class="kpi yellow" style="padding:10px">
+            <div class="kpi-label">🟡 30 dias</div>
+            <div class="kpi-val" id="cnt-30">—</div>
+          </div>
+          <div class="kpi blue" style="padding:10px">
+            <div class="kpi-label">🔵 60 dias</div>
+            <div class="kpi-val" id="cnt-60">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Instruções de configuração -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">🔧 Como Configurar a Automação no Google Apps Script</div>
+      <ol style="padding-left:20px;line-height:2;font-size:12px;color:#555">
+        <li>Abra o <strong>Google Sheets</strong> com a planilha <code>RELAÇÃO GERAL COLABORADORES CGH</code></li>
+        <li>Acesse <strong>Extensões → Apps Script</strong></li>
+        <li>Cole o conteúdo do arquivo <code>apps-script/automacao.gs</code> (incluso neste projeto)</li>
+        <li>Ajuste os e-mails dos administradores na função <code>enviarResumoAdmin()</code></li>
+        <li>Execute <strong>testarEnvioEmail()</strong> para validar o template</li>
+        <li>Crie o gatilho: <strong>Adicionar Gatilho → verificarEEnviarAlertas → Diário → 08:00</strong></li>
+        <li>Autorize as permissões quando solicitado</li>
+      </ol>
+    </div>
+
+    <!-- Tabela de alertas -->
+    <div class="card">
+      <div class="card-title">📬 Colaboradores com Alertas Ativos (top 100)</div>
+      <div class="tbl-wrap" style="max-height:440px">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Alerta</th>
+              <th>BP</th>
+              <th>Nome</th>
+              <th>Cargo</th>
+              <th>Gestor</th>
+              <th>Curso</th>
+              <th>Situação</th>
+              <th>E-mail</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-alertas"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /page-automacao -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PÁGINA 10: IA ASSISTENTE
+  ══════════════════════════════════════════════════════════ -->
+  <div id="page-ia" class="page">
+
+    <div class="page-header">
+      <div>
+        <h2>🤖 IA Assistente</h2>
+        <p>Consulte os dados de treinamentos em linguagem natural</p>
+      </div>
+    </div>
+
+    <div class="ai-container">
+      <div class="ai-header">
+        <div class="ai-header-icon">🤖</div>
+        <div>
+          <h3>Assistente de Treinamentos LATAM CGH</h3>
+          <p>Faça perguntas sobre os treinamentos, pendências e conformidade</p>
+        </div>
+      </div>
+
+      <!-- Atalhos -->
+      <div class="ai-pills">
+        <button class="ai-pill" onclick="sendAIQuestion('Quem está com treinamento vencido?')">🔴 Quem está vencido?</button>
+        <button class="ai-pill" onclick="sendAIQuestion('Quem vence em 15 dias?')">🟠 Vence em 15 dias</button>
+        <button class="ai-pill" onclick="sendAIQuestion('Quem vence em 30 dias?')">🟡 Vence em 30 dias</button>
+        <button class="ai-pill" onclick="sendAIQuestion('Quais cursos possuem mais pendências?')">📚 Cursos críticos</button>
+        <button class="ai-pill" onclick="sendAIQuestion('Quais gestores possuem mais colaboradores com pendência?')">👥 Gestores críticos</button>
+        <button class="ai-pill" onclick="sendAIQuestion('Como está a conformidade geral?')">📊 Conformidade geral</button>
+        <button class="ai-pill" onclick="sendAIQuestion('Comparativo ATO vs GRH')">📍 ATO vs GRH</button>
+      </div>
+
+      <!-- Chat -->
+      <div class="ai-chat" id="ai-chat">
+        <div class="ai-msg bot">
+          👋 Olá! Sou o assistente de treinamentos da Base CGH.<br><br>
+          Posso responder perguntas sobre pendências, vencimentos, conformidade e gestores.
+          Use os atalhos acima ou faça sua pergunta abaixo!
+        </div>
+      </div>
+
+      <div class="ai-typing" id="ai-typing">💭 Analisando os dados...</div>
+
+      <!-- Input -->
+      <div class="ai-input-row">
+        <input class="ai-input" id="ai-input" type="text"
+          placeholder="Digite sua pergunta..."
+          onkeydown="if(event.key==='Enter') sendAIQuestion()">
+        <button class="ai-send" onclick="sendAIQuestion()">➤</button>
+      </div>
+    </div>
+
+  </div><!-- /page-ia -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PÁGINA 11: BUSCA
+  ══════════════════════════════════════════════════════════ -->
+  <div id="page-busca" class="page">
+
+    <div class="page-header">
+      <div>
+        <h2>🔍 Buscar Colaborador</h2>
+        <p>Pesquise por nome, BP, cargo, gestor ou e-mail</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="filter-bar" style="margin-bottom:0;border:none;padding:0;background:none">
+        <input type="text" id="busca-q"
+          placeholder="🔍  Digite o nome, BP, cargo, gestor ou e-mail..."
+          oninput="renderBusca()"
+          style="width:100%;font-size:13px;padding:10px 14px;border-radius:6px">
+      </div>
+    </div>
+
+    <div id="busca-result">
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <p>Digite ao menos 2 caracteres para buscar...</p>
+      </div>
+    </div>
+
+  </div><!-- /page-busca -->
+
+</main><!-- /main -->
+
+<!-- Toast global -->
+<div id="toast-global" class="toast"></div>
+
+<!-- App.js -->
+<script src="js/app.js"></script>
+
+<script>
+// Atualiza valor do donut após dados carregados
+document.addEventListener('DOMContentLoaded', () => {
+  const pct = window.LATAM_DATA?.summary?.conformidade;
+  if (pct) {
+    const el = document.getElementById('donut-pct-txt');
+    if (el) el.textContent = pct + '%';
+  }
+});
+</script>
+
+</body>
+</html>

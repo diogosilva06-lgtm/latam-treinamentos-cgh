@@ -1,0 +1,14 @@
+# Arquivos temporários de processamento Python
+*.pyc
+__pycache__/
+data_raw.json
+data.json
+*.xlsx
+*.xls
+
+# MacOS
+.DS_Store
+
+# Editor
+.vscode/
+*.swp
