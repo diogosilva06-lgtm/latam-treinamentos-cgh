@@ -1038,15 +1038,11 @@ function updateClock() {
 // ── INICIALIZAÇÃO ────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Atualiza badge de pendentes no menu
-  const s = D().summary;
-  const badges = document.querySelectorAll('.nav-badge[data-count="pend"]');
-  badges.forEach(b => b.textContent = s.total_pend);
-
   // Relógio
   updateClock();
   setInterval(updateClock, 30000);
 
-  // Abre a página inicial
-  goPage('exec');
+  // Nota: a inicialização da página (goPage) e o badge de pendentes
+  // são controlados pelo script de carregamento ao vivo no index.html,
+  // que executa após os dados da planilha serem buscados.
 });
