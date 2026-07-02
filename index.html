@@ -143,6 +143,10 @@ body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; }
     <button class="nav-item" data-page="ia" onclick="goPage('ia')">
       <span class="nav-icon">🤖</span> IA Assistente
     </button>
+    <button class="nav-item" data-page="respostas" onclick="goPage('respostas')">
+      <span class="nav-icon">📋</span> Respostas
+      <span class="nav-badge" id="badge-respostas" style="display:none">0</span>
+    </button>
     <button class="nav-item" data-page="busca" onclick="goPage('busca')">
       <span class="nav-icon">🔍</span> Buscar
     </button>
@@ -769,7 +773,101 @@ body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; }
 
 
   <!-- ══════════════════════════════════════════════════════════
-       PÁGINA 11: BUSCA
+       PÁGINA 11: RESPOSTAS DO FORMULÁRIO
+  ══════════════════════════════════════════════════════════ -->
+  <div id="page-respostas" class="page">
+
+    <div class="page-header">
+      <div>
+        <h2>📋 Respostas do Formulário</h2>
+        <p>Retornos dos colaboradores sobre os treinamentos</p>
+      </div>
+      <div class="export-bar">
+        <button class="btn btn-secondary" onclick="carregarRespostas(true)">↻ Atualizar</button>
+        <button class="btn btn-yellow" onclick="exportarRespostasCSV()">⬇️ Exportar CSV</button>
+      </div>
+    </div>
+
+    <!-- KPIs de respostas -->
+    <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:14px">
+      <div class="kpi green" id="kpi-resp-aprovado">
+        <div class="kpi-label">✅ Aprovados</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">Concluídos</div>
+      </div>
+      <div class="kpi blue" id="kpi-resp-agendando">
+        <div class="kpi-label">⏳ Agendando</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">Em andamento</div>
+      </div>
+      <div class="kpi red" id="kpi-resp-nao-aprovado">
+        <div class="kpi-label">❌ Não Aprovados</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">Reagendamento</div>
+      </div>
+      <div class="kpi orange" id="kpi-resp-nao-realizou">
+        <div class="kpi-label">🚫 Não Realizou</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">Com observação</div>
+      </div>
+      <div class="kpi dark" id="kpi-resp-total">
+        <div class="kpi-label">📊 Total</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">Respostas</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-bar">
+      <span class="filter-label">Situação:</span>
+      <select id="f-resp-situacao" onchange="filtrarRespostas()">
+        <option value="">Todas</option>
+        <option value="aprovado">✅ Aprovados</option>
+        <option value="agendando">⏳ Agendando</option>
+        <option value="nao_aprovado">❌ Não Aprovados</option>
+        <option value="nao_realizou">🚫 Não Realizou</option>
+      </select>
+      <span class="filter-label">Buscar:</span>
+      <input type="text" id="f-resp-busca" placeholder="Nome, BP, curso..." oninput="filtrarRespostas()" style="width:200px">
+    </div>
+
+    <!-- Tabela -->
+    <div class="card">
+      <div id="respostas-loading" style="text-align:center;padding:40px;color:#777;display:none">
+        <div class="spinner" style="margin:0 auto 10px"></div>
+        <p style="font-size:12px">Carregando respostas da planilha...</p>
+      </div>
+      <div id="respostas-erro" style="display:none"></div>
+      <div class="tbl-wrap" style="max-height:500px">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Hora</th>
+              <th>BP</th>
+              <th>Nome</th>
+              <th>Curso</th>
+              <th>Gestor</th>
+              <th class="center">Situação</th>
+              <th>Observação</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-respostas">
+            <tr><td colspan="8">
+              <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <p>Clique em "Atualizar" para carregar as respostas</p>
+              </div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /page-respostas -->
+
+  <!-- ══════════════════════════════════════════════════════════
+       PÁGINA 12: BUSCA
   ══════════════════════════════════════════════════════════ -->
   <div id="page-busca" class="page">
 
