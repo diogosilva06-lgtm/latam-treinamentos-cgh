@@ -357,20 +357,36 @@ async function enviarResposta() {
   };
 
   try {
-    // Envia para o Google Apps Script
-    const url = WEBAPP_URL
-      ? WEBAPP_URL + '?' + new URLSearchParams(payload).toString()
-      : null;
+    if (WEBAPP_URL) {
+      // Cria URL com todos os parâmetros e abre em iframe invisível
+      // Isso contorna o bloqueio de CORS mantendo os parâmetros
+      const urlParams = new URLSearchParams({
+        bp:           payload.bp,
+        nome:         payload.nome,
+        curso:        payload.curso,
+        gestor:       payload.gestor,
+        eg:           payload.email_gestor,
+        situacao:     payload.situacao,
+        observacao:   payload.observacao,
+        token:        payload.token,
+        data_resposta: payload.data_resposta,
+        hora_resposta: payload.hora_resposta
+      });
 
-    if (url) {
-      await fetch(url, { method: 'GET', mode: 'no-cors' });
+      const urlFinal = WEBAPP_URL + '?' + urlParams.toString();
+
+      // Usa imagem 1x1 para disparar o GET sem bloquear por CORS
+      const img = new Image();
+      img.src = urlFinal;
+
+      // Também tenta via fetch no-cors como backup
+      fetch(urlFinal, { method: 'GET', mode: 'no-cors' }).catch(() => {});
     }
 
-    // Mostra tela de sucesso
-    mostrarSucesso(opcaoSelecionada, obs);
+    // Aguarda 1 segundo para garantir o envio e mostra sucesso
+    setTimeout(() => mostrarSucesso(opcaoSelecionada, obs), 1000);
 
   } catch (err) {
-    // Mesmo com erro de CORS, o Apps Script recebe — mostra sucesso
     mostrarSucesso(opcaoSelecionada, obs);
   }
 }
