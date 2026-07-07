@@ -239,6 +239,37 @@
 
     </div>
 
+
+    <!-- Campo de certificado (visível para aprovado) -->
+    <div class="cert-group" id="cert-group" style="display:none;margin-bottom:16px">
+      <span class="obs-label" style="color:#217346">📄 Anexe o certificado do treinamento:</span>
+      <div id="cert-drop" style="
+        border: 2px dashed #217346;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        background: #f0fff4;
+        margin-top: 6px;
+        transition: background .15s;
+      " onclick="document.getElementById('cert-input').click()"
+         ondragover="event.preventDefault();this.style.background='#d4edda'"
+         ondragleave="this.style.background='#f0fff4'"
+         ondrop="handleDrop(event)">
+        <div style="font-size:28px;margin-bottom:6px">📄</div>
+        <div style="font-size:12px;color:#217346;font-weight:600">Clique para selecionar ou arraste o arquivo</div>
+        <div style="font-size:10px;color:#777;margin-top:4px">PDF, JPG ou PNG · Máximo 10MB</div>
+      </div>
+      <input type="file" id="cert-input" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="handleFile(this.files[0])">
+      <div id="cert-preview" style="display:none;margin-top:10px;padding:10px 14px;background:#e6f4ea;border-radius:6px;border:1px solid #217346;font-size:12px;color:#217346;display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px">✅</span>
+        <div>
+          <div id="cert-filename" style="font-weight:600"></div>
+          <div id="cert-filesize" style="font-size:10px;color:#555"></div>
+        </div>
+        <button onclick="removerArquivo()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#C00000;font-size:16px">✕</button>
+      </div>
+    </div>
     <!-- Campo observação (visível para nao_aprovado e nao_realizou) -->
     <div class="obs-group" id="obs-group">
       <span class="obs-label" id="obs-label">⚠️ Campo obrigatório — informe o motivo:</span>
@@ -279,7 +310,7 @@ const emailG   = params.get('eg')    || '';
 const token    = params.get('token') || '';
 
 // URL do Google Apps Script Web App (será preenchida após o deploy)
-const WEBAPP_URL = params.get('webapp') || '';
+const WEBAPP_URL = params.get('webapp') || 'https://script.google.com/macros/s/AKfycbxoOSEERaNVwwP5fx8HKJZ0jR9tpuuVB0ZwWbc6XuHJqOxH1Q-2jFA24ydTP6wBexsojw/exec';
 
 // ── Preenche informações ───────────────────────────────────────
 document.getElementById('info-colab').innerHTML = `
@@ -323,6 +354,15 @@ function selecionarOpcao(valor, el) {
     document.getElementById('obs-text').value = '';
   }
 
+  // Mostra/esconde campo de certificado
+  const certGroup = document.getElementById('cert-group');
+  if (valor === 'aprovado') {
+    certGroup.style.display = 'block';
+  } else {
+    certGroup.style.display = 'none';
+    removerArquivo();
+  }
+
   document.getElementById('btn-submit').disabled = false;
   document.getElementById('erro-box').classList.remove('visible');
 }
@@ -344,6 +384,44 @@ async function enviarResposta() {
   document.getElementById('btn-submit').disabled = true;
   document.getElementById('erro-box').classList.remove('visible');
 
+  // Arquivo de certificado selecionado
+  let arquivoCert = null;
+  let arquivoCertBase64 = null;
+
+  function handleFile(file) {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Arquivo muito grande. Máximo permitido: 10MB');
+      return;
+    }
+    arquivoCert = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      arquivoCertBase64 = e.target.result.split(',')[1]; // remove "data:...;base64,"
+    };
+    reader.readAsDataURL(file);
+
+    document.getElementById('cert-preview').style.display = 'flex';
+    document.getElementById('cert-filename').textContent = file.name;
+    document.getElementById('cert-filesize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+    document.getElementById('cert-drop').style.display = 'none';
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    document.getElementById('cert-drop').style.background = '#f0fff4';
+    const file = event.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }
+
+  function removerArquivo() {
+    arquivoCert = null;
+    arquivoCertBase64 = null;
+    document.getElementById('cert-input').value = '';
+    document.getElementById('cert-preview').style.display = 'none';
+    document.getElementById('cert-drop').style.display = 'block';
+  }
+
   const payload = {
     bp, nome: decodeURIComponent(nome),
     curso: decodeURIComponent(curso),
@@ -353,38 +431,54 @@ async function enviarResposta() {
     observacao: obs,
     token,
     data_resposta: new Date().toLocaleDateString('pt-BR'),
-    hora_resposta: new Date().toLocaleTimeString('pt-BR')
+    hora_resposta: new Date().toLocaleTimeString('pt-BR'),
+    cert_nome: arquivoCert ? arquivoCert.name : '',
+    cert_tipo: arquivoCert ? arquivoCert.type : '',
+    cert_base64: arquivoCertBase64 || ''
   };
 
   try {
     if (WEBAPP_URL) {
-      // Cria URL com todos os parâmetros e abre em iframe invisível
-      // Isso contorna o bloqueio de CORS mantendo os parâmetros
+      // Envia via GET com parâmetros na URL
       const urlParams = new URLSearchParams({
-        bp:           payload.bp,
-        nome:         payload.nome,
-        curso:        payload.curso,
-        gestor:       payload.gestor,
-        eg:           payload.email_gestor,
-        situacao:     payload.situacao,
-        observacao:   payload.observacao,
-        token:        payload.token,
+        bp:            payload.bp,
+        nome:          payload.nome,
+        curso:         payload.curso,
+        gestor:        payload.gestor,
+        eg:            payload.email_gestor,
+        situacao:      payload.situacao,
+        observacao:    payload.observacao,
+        token:         payload.token,
         data_resposta: payload.data_resposta,
-        hora_resposta: payload.hora_resposta
+        hora_resposta: payload.hora_resposta,
+        cert_nome:     payload.cert_nome,
+        cert_tipo:     payload.cert_tipo
       });
 
-      const urlFinal = WEBAPP_URL + '?' + urlParams.toString();
+      const urlGet = WEBAPP_URL + '?' + urlParams.toString();
 
-      // Usa imagem 1x1 para disparar o GET sem bloquear por CORS
-      const img = new Image();
-      img.src = urlFinal;
-
-      // Também tenta via fetch no-cors como backup
-      fetch(urlFinal, { method: 'GET', mode: 'no-cors' }).catch(() => {});
+      // Se tem certificado, envia via POST para incluir o arquivo
+      if (payload.cert_base64 && payload.cert_base64.length > 0) {
+        const body = JSON.stringify({
+          ...Object.fromEntries(urlParams),
+          cert_base64: payload.cert_base64
+        });
+        fetch(WEBAPP_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: body
+        }).catch(() => {});
+      } else {
+        // Sem certificado: usa GET normal
+        const img = new Image();
+        img.src = urlGet;
+        fetch(urlGet, { method: 'GET', mode: 'no-cors' }).catch(() => {});
+      }
     }
 
-    // Aguarda 1 segundo para garantir o envio e mostra sucesso
-    setTimeout(() => mostrarSucesso(opcaoSelecionada, obs), 1000);
+    // Aguarda 1.5 segundos e mostra sucesso
+    setTimeout(() => mostrarSucesso(opcaoSelecionada, obs), 1500);
 
   } catch (err) {
     mostrarSucesso(opcaoSelecionada, obs);
@@ -399,7 +493,9 @@ function mostrarSucesso(situacao, obs) {
   if (situacao === 'aprovado') {
     document.getElementById('success-icon').textContent = '✅';
     document.getElementById('success-title').textContent = 'Ótimo! Treinamento concluído!';
-    document.getElementById('success-msg').textContent = 'Parabéns pela conclusão do treinamento. Seu gestor foi notificado do seu aproveitamento.';
+    document.getElementById('success-msg').textContent = arquivoCert
+      ? 'Parabéns! Seu certificado foi enviado e registrado com sucesso. Seu gestor foi notificado.'
+      : 'Parabéns pela conclusão do treinamento. Seu gestor foi notificado do seu aproveitamento.';
   } else if (situacao === 'nao_aprovado') {
     document.getElementById('success-icon').textContent = '📅';
     document.getElementById('success-title').textContent = 'Resposta registrada!';
