@@ -930,83 +930,161 @@ function initRespostas() {
   carregarRespostas(false);
 }
 
-async function carregarRespostas(forcar) {
+// URL do Apps Script Web App (mesmo usado pelo formulário)
+// Planilha pessoal pública — base de dados das respostas
+const SHEET_PESSOAL_ID = '1pbRDIzKQB6yOJpJB87c_37xkVXGqLweqs1jsgNDKCio';
+const RESPOSTAS_WEBAPP_URL = 'https://script.google.com/a/macros/latam.com/s/AKfycbwyaViTLEvfMWgTi3_esNzEFM9R4faG-GHO29Kn6JuFg7BlVP1GUi5oIZNXEnsKUu6zRA/exec';
+
+// ── CARREGAMENTO DE RESPOSTAS VIA JSONP (contorna CORS corporativo) ──
+
+function carregarRespostas(forcar) {
   if (respostasCache.length && !forcar) {
     renderRespostas(respostasCache);
     return;
   }
 
   document.getElementById('respostas-loading').style.display = 'block';
+  document.getElementById('respostas-erro').style.display = 'none';
   document.getElementById('tbody-respostas').innerHTML = '';
 
-  try {
-    // Busca todas as abas para encontrar Respostas_Formulario
-    const urlCSV = `https://docs.google.com/spreadsheets/d/${SHEET_ID_RESPOSTAS}/gviz/tq?tqx=out:csv&sheet=Respostas_Formulario`;
-    const resp = await fetch(urlCSV + '&_=' + Date.now());
+  // Lê CSV da planilha pessoal pública (sem bloqueio de CORS)
+  const urlCSV = `https://docs.google.com/spreadsheets/d/${SHEET_PESSOAL_ID}/export?format=csv&_=${Date.now()}`;
 
-    if (!resp.ok) throw new Error('Aba não encontrada ou planilha não compartilhada');
+  fetch(urlCSV)
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(text => {
+      // Parser CSV
+      const rows = text.trim().split('\n').map(r => {
+        const cols = []; let field = '', inQ = false;
+        for (let i = 0; i < r.length; i++) {
+          const c = r[i];
+          if (c === '"') { inQ = !inQ; }
+          else if (c === ',' && !inQ) { cols.push(field.trim().replace(/^"|"$/g,'')); field = ''; }
+          else { field += c; }
+        }
+        cols.push(field.trim().replace(/^"|"$/g,''));
+        return cols;
+      });
 
-    const text = await resp.text();
+      // Remove cabeçalho e linhas vazias
+      const dados = rows.slice(1).filter(r => r.length >= 6 && r[0]);
 
-    // Parser CSV simples
-    const rows = text.trim().split('\n').map(r => {
-      const cols = [];
-      let field = '', inQ = false;
-      for (let i = 0; i < r.length; i++) {
-        const c = r[i];
-        if (c === '"') { inQ = !inQ; }
-        else if (c === ',' && !inQ) { cols.push(field.trim()); field = ''; }
-        else { field += c; }
+      respostasCache = dados.map(r => ({
+        data:         r[0] || '',
+        hora:         r[1] || '',
+        bp:           r[2] || '',
+        nome:         r[3] || '',
+        curso:        r[4] || '',
+        gestor:       r[5] || '',
+        situacao:     r[6] || '',
+        observacao:   r[7] || '',
+        email_gestor: r[8] || '',
+        certificado:  r[9] || ''
+      }));
+
+      renderRespostas(respostasCache);
+      atualizarKPIsRespostas(respostasCache);
+
+      const badge = document.getElementById('badge-respostas');
+      if (badge && respostasCache.length) {
+        badge.textContent = respostasCache.length;
+        badge.style.display = 'inline';
       }
-      cols.push(field.trim());
-      return cols;
+
+      document.getElementById('respostas-loading').style.display = 'none';
+      toast(respostasCache.length + ' respostas carregadas!', 'success');
+    })
+    .catch(err => {
+      console.error('Erro ao carregar respostas:', err);
+      document.getElementById('respostas-loading').style.display = 'none';
+      mostrarErroRespostas('Não foi possível carregar as respostas. Verifique se a planilha pessoal está compartilhada como "Qualquer pessoa com o link".');
     });
 
-    // Remove cabeçalho
-    const dados = rows.slice(1).filter(r => r.length >= 6 && r[0]);
+  return; // função agora é assíncrona via promise
+}
 
-    respostasCache = dados.map(r => ({
-      data:       r[0] || '',
-      hora:       r[1] || '',
-      bp:         r[2] || '',
-      nome:       r[3] || '',
-      curso:      r[4] || '',
-      gestor:     r[5] || '',
-      situacao:   r[6] || '',
-      observacao: r[7] || '',
-      email_gestor: r[8] || ''
-    }));
+function carregarRespostasOLD(forcar) {
+  if (respostasCache.length && !forcar) {
+    renderRespostas(respostasCache);
+    return;
+  }
 
+  document.getElementById('respostas-loading').style.display = 'block';
+  document.getElementById('respostas-erro').style.display = 'none';
+  document.getElementById('tbody-respostas').innerHTML = '';
+
+  // Nome único do callback para evitar colisões
+  const cbName = 'latamRespostasCallback_' + Date.now();
+
+  // Cria elemento script para JSONP
+  const script = document.createElement('script');
+  script.id = 'jsonp-respostas';
+
+  // Timeout de 15 segundos
+  const timeout = setTimeout(() => {
+    limparJSONP(cbName, script);
+    mostrarErroRespostas('Tempo esgotado ao conectar com o Apps Script. Tente novamente.');
+  }, 15000);
+
+  // Função callback que será chamada pelo Apps Script
+  window[cbName] = function(data) {
+    clearTimeout(timeout);
+    limparJSONP(cbName, script);
+
+    document.getElementById('respostas-loading').style.display = 'none';
+
+    if (!data || !data.ok) {
+      mostrarErroRespostas('Apps Script retornou erro.');
+      return;
+    }
+
+    respostasCache = data.dados || [];
     renderRespostas(respostasCache);
     atualizarKPIsRespostas(respostasCache);
 
-    // Atualiza badge no menu
     const badge = document.getElementById('badge-respostas');
     if (badge && respostasCache.length) {
       badge.textContent = respostasCache.length;
       badge.style.display = 'inline';
     }
 
-    toast(`${respostasCache.length} respostas carregadas!`, 'success');
+    toast(respostasCache.length + ' respostas carregadas!', 'success');
+  };
 
-  } catch(err) {
-    const erroEl = document.getElementById('respostas-erro');
-    erroEl.style.display = 'block';
-    erroEl.innerHTML = `<div class="alert-banner yellow">
-      ⚠️ <strong>Atenção:</strong> ${
-        err.message.includes('não encontrada')
-          ? 'A aba "Respostas_Formulario" ainda não existe — ela será criada automaticamente após a primeira resposta do formulário.'
-          : 'Não foi possível carregar as respostas. Verifique se a planilha está compartilhada como "Qualquer pessoa com o link".'
-      }
-    </div>`;
-    document.getElementById('tbody-respostas').innerHTML = `
-      <tr><td colspan="8"><div class="empty-state">
-        <div class="empty-icon">📋</div>
-        <p>Nenhuma resposta disponível ainda.<br>As respostas aparecerão aqui após os colaboradores preencherem o formulário.</p>
-      </div></td></tr>`;
-  } finally {
-    document.getElementById('respostas-loading').style.display = 'none';
-  }
+  // URL com JSONP callback
+  script.src = 'https://script.google.com/a/macros/latam.com/s/AKfycbwyaViTLEvfMWgTi3_esNzEFM9R4faG-GHO29Kn6JuFg7BlVP1GUi5oIZNXEnsKUu6zRA/exec?acao=listar&callback=' + cbName + '&_=' + Date.now();
+  script.onerror = function() {
+    clearTimeout(timeout);
+    limparJSONP(cbName, script);
+    mostrarErroRespostas('Não foi possível conectar ao Apps Script.');
+  };
+
+  document.body.appendChild(script);
+}
+
+function limparJSONP(cbName, script) {
+  delete window[cbName];
+  if (script && script.parentNode) script.parentNode.removeChild(script);
+}
+
+function mostrarErroRespostas(msg) {
+  document.getElementById('respostas-loading').style.display = 'none';
+  const erroEl = document.getElementById('respostas-erro');
+  erroEl.style.display = 'block';
+  erroEl.innerHTML = `<div class="alert-banner yellow">
+    ⚠️ <strong>${msg}</strong><br>
+    Verifique se o Apps Script está publicado com acesso <strong>"Qualquer pessoa"</strong>
+    e se a implementação foi atualizada para a versão mais recente.
+  </div>`;
+  document.getElementById('tbody-respostas').innerHTML = `
+    <tr><td colspan="9"><div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <p>Não foi possível carregar as respostas.<br>
+      Certifique-se que o Apps Script está publicado corretamente.</p>
+    </div></td></tr>`;
 }
 
 function renderRespostas(dados) {
@@ -1042,6 +1120,13 @@ function renderRespostas(dados) {
           ? '<span class="badge badge-pend">❌ Não Aprovado</span>'
           : '<span class="badge badge-warn">🚫 Não Realizou</span>';
 
+    const certBtn = r.certificado
+      ? `<a href="${r.certificado}" target="_blank"
+           style="background:#217346;color:#fff;padding:3px 8px;border-radius:4px;font-size:10px;text-decoration:none;white-space:nowrap">
+           📄 Ver
+         </a>`
+      : '<span style="color:#ccc;font-size:10px">—</span>';
+
     return `<tr>
       <td style="font-size:10px;white-space:nowrap">${r.data}</td>
       <td style="font-size:10px">${r.hora}</td>
@@ -1051,6 +1136,7 @@ function renderRespostas(dados) {
       <td style="font-size:11px">${r.gestor.split(' ').slice(0,3).join(' ')}</td>
       <td class="center">${sitBadge}</td>
       <td style="font-size:11px;color:#777;font-style:italic">${r.observacao || '—'}</td>
+      <td class="center">${certBtn}</td>
     </tr>`;
   }).join('');
 }
