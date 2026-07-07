@@ -945,6 +945,94 @@ function carregarRespostas(forcar) {
 
   document.getElementById('respostas-loading').style.display = 'block';
   document.getElementById('respostas-erro').style.display = 'none';
+
+  // Carrega do arquivo respostas.js (atualizado manualmente via CSV)
+  if (window.LATAM_RESPOSTAS && window.LATAM_RESPOSTAS.length) {
+    respostasCache = window.LATAM_RESPOSTAS;
+    renderRespostas(respostasCache);
+    atualizarKPIsRespostas(respostasCache);
+
+    const badge = document.getElementById('badge-respostas');
+    if (badge && respostasCache.length) {
+      badge.textContent = respostasCache.length;
+      badge.style.display = 'inline';
+    }
+
+    document.getElementById('respostas-loading').style.display = 'none';
+    toast(respostasCache.length + ' respostas carregadas!', 'success');
+  } else {
+    document.getElementById('respostas-loading').style.display = 'none';
+    mostrarErroRespostas('Nenhuma resposta disponível. Exporte o CSV da planilha e atualize o arquivo respostas.js.');
+  }
+}
+
+function carregarRespostasOLD3(forcar) {
+  if (respostasCache.length && !forcar) {
+    renderRespostas(respostasCache);
+    return;
+  }
+
+  document.getElementById('respostas-loading').style.display = 'block';
+  document.getElementById('respostas-erro').style.display = 'none';
+  document.getElementById('tbody-respostas').innerHTML = '';
+
+  // Tenta ler via proxy AllOrigins (contorna CORS)
+  const csvUrl = 'https://docs.google.com/spreadsheets/d/1UgJFqDJycC38jfr1zhyacZE5O8QJSLXxd7NSgGLVdd8/gviz/tq?tqx=out:csv&sheet=Respostas_Formulario';
+  const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(csvUrl);
+
+  fetch(proxyUrl)
+    .then(r => r.json())
+    .then(data => {
+      const text = data.contents;
+      if (!text || text.includes('error')) throw new Error('Sem dados');
+
+      const rows = text.trim().split('\n').map(r => {
+        const cols = []; let field = '', inQ = false;
+        for (let i = 0; i < r.length; i++) {
+          const c = r[i];
+          if (c === '"') { inQ = !inQ; }
+          else if (c === ',' && !inQ) { cols.push(field.trim().replace(/^"|"$/g,'')); field = ''; }
+          else { field += c; }
+        }
+        cols.push(field.trim().replace(/^"|"$/g,''));
+        return cols;
+      });
+
+      const dados = rows.slice(1).filter(r => r.length >= 6 && r[0]);
+      respostasCache = dados.map(r => ({
+        data: r[0]||'', hora: r[1]||'', bp: r[2]||'',
+        nome: r[3]||'', curso: r[4]||'', gestor: r[5]||'',
+        situacao: r[6]||'', observacao: r[7]||'',
+        email_gestor: r[8]||'', certificado: r[9]||''
+      }));
+
+      renderRespostas(respostasCache);
+      atualizarKPIsRespostas(respostasCache);
+
+      const badge = document.getElementById('badge-respostas');
+      if (badge && respostasCache.length) {
+        badge.textContent = respostasCache.length;
+        badge.style.display = 'inline';
+      }
+
+      document.getElementById('respostas-loading').style.display = 'none';
+      toast(respostasCache.length + ' respostas carregadas!', 'success');
+    })
+    .catch(err => {
+      console.error('Erro proxy:', err);
+      document.getElementById('respostas-loading').style.display = 'none';
+      mostrarErroRespostas('Não foi possível carregar as respostas. Verifique se a aba "Respostas_Formulario" existe na planilha.');
+    });
+}
+
+function carregarRespostasOLD2(forcar) {
+  if (respostasCache.length && !forcar) {
+    renderRespostas(respostasCache);
+    return;
+  }
+
+  document.getElementById('respostas-loading').style.display = 'block';
+  document.getElementById('respostas-erro').style.display = 'none';
   document.getElementById('tbody-respostas').innerHTML = '';
 
   // Lê CSV da planilha pessoal pública (sem bloqueio de CORS)
