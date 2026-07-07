@@ -933,7 +933,7 @@ function initRespostas() {
 // URL do Apps Script Web App (mesmo usado pelo formulário)
 // Planilha pessoal pública — base de dados das respostas
 const SHEET_PESSOAL_ID = '1pbRDIzKQB6yOJpJB87c_37xkVXGqLweqs1jsgNDKCio';
-const RESPOSTAS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxoOSEERaNVwwP5fx8HKJZ0jR9tpuuVB0ZwWbc6XuHJqOxH1Q-2jFA24ydTP6wBexsojw/exec';
+const RESPOSTAS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbx8KSTM9hC0MenYQluCiyntOkPYrtFd5oy-hXrgbbYkxY4XN-XK5Xw8sc0xVTkBIGSxnw/exec';
 
 // ── CARREGAMENTO DE RESPOSTAS VIA JSONP (contorna CORS corporativo) ──
 
@@ -1055,7 +1055,7 @@ function carregarRespostasOLD(forcar) {
   };
 
   // URL com JSONP callback
-  script.src = 'https://script.google.com/macros/s/AKfycbxoOSEERaNVwwP5fx8HKJZ0jR9tpuuVB0ZwWbc6XuHJqOxH1Q-2jFA24ydTP6wBexsojw/exec?acao=listar&callback=' + cbName + '&_=' + Date.now();
+  script.src = 'https://script.google.com/macros/s/AKfycbx8KSTM9hC0MenYQluCiyntOkPYrtFd5oy-hXrgbbYkxY4XN-XK5Xw8sc0xVTkBIGSxnw/exec?acao=listar&callback=' + cbName + '&_=' + Date.now();
   script.onerror = function() {
     clearTimeout(timeout);
     limparJSONP(cbName, script);
