@@ -1,6 +1,6 @@
 // ============================================================
 // LATAM Airlines CGH — Dados do Dashboard
-// Gerado automaticamente via Apps Script em: 16/07/2026
+// Gerado automaticamente via Apps Script em: 17/07/2026
 // NÃO EDITE MANUALMENTE — atualizado a cada 30 min pelo robô
 // ============================================================
 
@@ -8,7 +8,7 @@ window.LATAM_DATA = {
   "summary": {
     "total_colabs": 877,
     "total_registros": 15617,
-    "data_atualizacao": "16/07/2026",
+    "data_atualizacao": "17/07/2026",
     "total_ok": 15345,
     "total_pend": 272,
     "conformidade": 98.3,
